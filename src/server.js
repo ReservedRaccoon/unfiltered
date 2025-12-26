@@ -1,117 +1,127 @@
-const io = require("socket.io")(3000,{
-    cors:{
-        origin:"*",
-    },
+console.log("1. Script starting...");
+
+const express = require('express');
+const http = require('http');
+const { Server } = require("socket.io");
+const path = require('path');
+const questions = require('./questions.json'); // Validated by debugger!
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// Serve files from the current folder
+app.use(express.static(__dirname));
+
+// Send HTML on root load
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
-/*
-roomData[roomName] = {
-players:[socketId1,socketId2,..],
-answers:[{id:socketId,text:"answer",author:"Name"}],
-votes:[]}*/
 
-const questions = require('./question.json');
-let users={}; // maps socketId->{name,roomName}
-let roomData = {};
+// Game State
+let roomData = {}; 
+let users = {};
 
-io.on("connection",(socket) => {
-    console.log(`User connected : ${socket.id}`);
-    // Event : user joining a specific room
-    socket.on("join-room",(roomName,username)=>{
-        socket.join(roomName);
-        users[socket.id] = { username,roomName};
-        console.log(`${username} joined room ${roomName}`);
-        io.to(roomName).emit("notification",`${username} has joined the party!`);
+io.on("connection", (socket) => {
+  console.log(`User Connected: ${socket.id}`);
 
-        // initialising the room if not exists
-        if(!roomData[roomName]){
-            roomData[roomName] = {players:[],answers:[],votes:[]};
-        }
+  socket.on("join-room", (room, name) => {
+    socket.join(room);
+    users[socket.id] = { name, room };
+    
+    // Init Room
+    if (!roomData[room]) {
+      roomData[room] = { players: [], answers: [], votes: [] };
+    }
+    
+    // Add Player
+    if (!roomData[room].players.includes(socket.id)) {
         roomData[room].players.push(socket.id);
-
-    });
-    // Event : question is displayed for users in the room
-    socket.on("get-question",(roomName)=>{
-        const randomIdx = Math.floor(Math.random()* questions.length);
-        let questionData = { ...questions[randomIdx]} //making a copy so that we don't modify the original database
-        if ( questionData.text.includes("{player}")){
-            const usersinRoom = Object.values(users).filter(u => u.room === roomName);
-            if(usersinRoom.length > 0){
-                const randomUser = usersInRoom[Math.floor(Math.random()* usersInRoom.length)];
-                questionData.text = questionData.text.replace("{player}",randomUser.name);
-
-            }
-            else{
-                //nonsense fallback
-                questionData.text = questionData.text.replace("{player}","someone");
-            }
-        }
-        io.to(roomName).emit("receive-question",questionData);
-    });
-    // PHASE 1 collecting answers 
-    socket.on("submit-answer",(answerText)=>{
-        const user = users[socket.id];
-        const room = roomData[user.roomName];
-        // store the answer
-        room.answers.push({
-            socketId:socket.id,
-            author:user.name,
-            text:answerText,
-            votes:0,
-            funnyVotes:0
-
-        });
-
-        // check if everyone has answered
-
-        if(room.answers.length === room.players.length){
-            // shuffle the answers
-            const shuffledAnswers = room.answers.sort(()=> Math.random()-0.5);
-
-            // switch the phase to voting
-            io.to(user.roomName).emit("start-voting",shuffledAnswers);
-        }
-        else{
-            socket.emit("wait-screen","Waiting for the players to vote");
-        }
-
-    });
-    //PHASE 2 collect votes
-    socket.on("submit-vote",(correctIndex,funnyIndex)=>{
-        const user = users[socket.id];
-        const room = roomData[user.roomName];
-        // record the votes
-        if(room.answers[correctIndex]) room.answers[correctIndex].votes +=1;
-        if (room.answers[funnyIndex]) room.answers[funnyIndex].funnyVotes +=1;
+    }
+    
+    // --- AUTO START CHECK ---
+    const playerCount = roomData[room].players.length;
+    
+    if (playerCount >= 2) {
+        io.to(room).emit("wait-screen", "Starting game in 3 seconds...");
         
-        room.votes.push({voter:user.name});
+        setTimeout(() => {
+            const randomIndex = Math.floor(Math.random() * questions.length);
+            let questionData = { ...questions[randomIndex] };
 
-        if(room.votes.length === room.players.length){
-            // calculating results
-            const results = room.answers.map(a=>({
-                author:a.author,
-                text:a.text,
-                score:a.votes,
-                funnyScore:a.funnyVotes
-            }));
-            // send results to everyone
-            io.to(user.room).emit("show-results",results);
-            // cleanup for next round
-            room.answers = [];
-            room.votes = [];
+            // Handle {player} tag
+            if (questionData.text && questionData.text.includes("{player}")) {
+                const usersInRoom = Object.values(users).filter(u => u.room === room);
+                if (usersInRoom.length > 0) {
+                    const randomUser = usersInRoom[Math.floor(Math.random() * usersInRoom.length)];
+                    questionData.text = questionData.text.replace("{player}", randomUser.name);
+                }
+            }
+            
+            io.to(room).emit("new-round", questionData.text); 
+        }, 3000);
+        
+    } else {
+        socket.emit("wait-screen", `Waiting for players... (You are player 1/2)`);
+    }
+  });
 
-        }
-        else{
-            socket.emit("wait-screen","Waiting for others to vote...");
-        }
+  socket.on("submit-answer", (answerText) => {
+    const user = users[socket.id];
+    if (!user) return; 
+    const room = roomData[user.room];
 
-
+    room.answers.push({
+      socketId: socket.id,
+      author: user.name,
+      text: answerText,
+      votes: 0,
+      funnyVotes: 0
     });
 
+    if (room.answers.length === room.players.length) {
+      const shuffledAnswers = room.answers.sort(() => Math.random() - 0.5);
+      io.to(user.room).emit("start-voting", shuffledAnswers);
+    } else {
+      socket.emit("wait-screen", "Waiting for others to answer...");
+    }
+  });
 
-    // disconnecting from the room
-    socket.on("disconnect",()=>{
-    delete users[socket.id];
+  socket.on("submit-vote", (truthIndex, funnyIndex) => {
+    const user = users[socket.id];
+    if (!user) return;
+    const room = roomData[user.room];
+
+    if (room.answers[truthIndex]) room.answers[truthIndex].votes += 1;
+    if (room.answers[funnyIndex]) room.answers[funnyIndex].funnyVotes += 1;
+
+    room.votes.push(user.name);
+
+    if (room.votes.length === room.players.length) {
+      const results = room.answers.map(a => ({
+        author: a.author,
+        text: a.text,
+        score: a.votes,
+        funnyScore: a.funnyVotes
+      }));
+      
+      io.to(user.room).emit("show-results", results);
+      room.answers = [];
+      room.votes = [];
+    } else {
+      socket.emit("wait-screen", "Waiting for others to vote...");
+    }
+  });
+
+  socket.on("disconnect", () => {
+    const user = users[socket.id];
+    if (user) delete users[socket.id];
+  });
 });
 
+// Using port 3001 to avoid conflicts
+server.listen(3001, () => {
+  console.log('----------------------------------------');
+  console.log('✅ SERVER RUNNING: http://localhost:3001');
+  console.log('----------------------------------------');
 });
-
