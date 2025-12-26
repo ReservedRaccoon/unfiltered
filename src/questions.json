@@ -1,0 +1,45 @@
+[
+    {
+        "id":1,
+        "text":"If {player} became rich suddenly, what's the first thing they'd buy?"
+
+    },
+    {
+        "id":2,
+        "text": "If {player} was a movie character, who would they be?"
+
+    },
+    {
+        "id":3,
+        "text":"If {player} was famous, what would they be famous for?"
+
+    },
+    {
+        "id":4,
+        "text":""
+    },
+    {
+        "id":5,
+        "text":""
+    },
+    {
+        "id":6,
+        "text":""
+    },
+    {
+        "id":7,
+        "text":""
+    },
+    {
+        "id":8,
+        "text":""
+    },
+    {
+        "id":9,
+        "text":""
+    },
+    {
+        "id":10,
+        "text":""
+    }
+]
