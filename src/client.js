@@ -5,6 +5,24 @@ let currentRoom = "";
 let myName = "";
 let voteTruthIndex = null;
 let voteFunnyIndex = null;
+// --- HOST LOGIC ---
+
+// 1. Server tells us we are the host
+socket.on('is-host', () => {
+    const startBtn = document.getElementById('btn-start');
+    if (startBtn) {
+        startBtn.style.display = 'block'; // Show the button
+        document.getElementById('wait-message').innerText = "You are the Host! Wait for friends, then click Start.";
+    }
+});
+
+// 2. Host clicks the button
+const startBtn = document.getElementById('btn-start');
+if (startBtn) {
+    startBtn.addEventListener('click', () => {
+        socket.emit('request-start-game'); // Tell server to start
+    });
+}
 
 // --- UI HELPER: SWITCH SCREENS ---
 function showScreen(screenId) {

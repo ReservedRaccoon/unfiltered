@@ -16,13 +16,14 @@
     <div id="screen-join" class="screen active">
         <h1>Welcome to the Game</h1>
         <input type="text" id="username" placeholder="Enter your Name" maxlength="12"><br>
-        <input type="text" id="room" placeholder="Enter Room Code (e.g. ROOM1)"><br>
+        <input type="text" id="room" placeholder="Enter Room Code"><br>
         <button id="btn-join">Join Room</button>
     </div>
 
     <div id="screen-wait" class="screen">
         <h2 id="wait-message">Waiting for players...</h2>
         <div class="wait-icon">⏳</div>
+        <button id="btn-start" style="display: none;">👑 START GAME</button>
         <p>Sit tight! The host (server) manages the flow.</p>
     </div>
 
