@@ -53,6 +53,10 @@
 4.  **Play!**
     Open your browser and go to:
     `http://localhost:3001`
+## 🔮 Future Improvements
+* [ ] **Custom Game Settings:** Allow the Host to set the number of rounds and a countdown timer for answering.
+* [ ] **Live Leaderboard:** Display current scores and rankings at the end of every round.
+* [ ] **More Question Decks:** Add different categories (e.g., "NSFW", "Family Friendly", "Deep Talks") that players can choose from.
 
 ## 📂 Project Structure
 
