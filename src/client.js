@@ -7,23 +7,73 @@ let voteTruthIndex = null;
 let voteFunnyIndex = null;
 // --- HOST LOGIC ---
 
+// --- HOST LOGIC ---
+
 // 1. Server tells us we are the host
 socket.on('is-host', () => {
-    const startBtn = document.getElementById('btn-start');
-    if (startBtn) {
-        startBtn.style.display = 'block'; // Show the button
-        document.getElementById('wait-message').innerText = "You are the Host! Wait for friends, then click Start.";
+    const hostControls = document.getElementById('host-controls');
+    const waitMessage = document.getElementById('wait-message');
+
+    if (hostControls) {
+        // Show the settings & start button
+        hostControls.style.display = 'flex'; 
+        // Update text to look like a control panel
+        waitMessage.innerText = "You are the Host! Configure the game below.";
     }
 });
 
-// 2. Host clicks the button
+// 2. Host clicks Start
 const startBtn = document.getElementById('btn-start');
 if (startBtn) {
     startBtn.addEventListener('click', () => {
-        socket.emit('request-start-game'); // Tell server to start
+        const roundsInput = document.getElementById('rounds-input');
+        const totalRounds = roundsInput ? roundsInput.value : 5; // Get value
+        
+        // Send start request with settings
+        socket.emit('request-start-game', totalRounds);
     });
 }
+// --- LISTEN FOR PLAYER LIST UPDATES ---
+socket.on('update-player-list', (names) => {
+    const list = document.getElementById('player-list');
+    const myName = document.getElementById('username').value; // Get my own name
 
+    if (list) {
+        list.innerHTML = ""; // Clear the old list
+        
+        names.forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = name;
+            
+            // Highlight myself
+            if (name === myName) {
+                li.classList.add('me');
+                li.textContent += " (You)";
+            }
+            
+            list.appendChild(li);
+        });
+    }
+});
+// --- NOTIFICATION SYSTEM ---
+socket.on("notification", (message) => {
+    const container = document.getElementById('notification-area');
+    if (!container) return;
+
+    // Create the message element
+    const msgDiv = document.createElement('div');
+    msgDiv.classList.add('notify-msg');
+    msgDiv.innerText = message;
+    
+    // Add to screen
+    container.appendChild(msgDiv);
+
+    // Remove it after 3 seconds
+    setTimeout(() => {
+        msgDiv.style.opacity = '0';
+        setTimeout(() => msgDiv.remove(), 500); // Wait for fade out
+    }, 3000);
+});
 // --- UI HELPER: SWITCH SCREENS ---
 function showScreen(screenId) {
     // Hide all screens first

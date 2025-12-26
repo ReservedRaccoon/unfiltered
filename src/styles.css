@@ -4,35 +4,27 @@
     --card-light: #EDE7DF;
     --text-primary: #F5EFE8;
     --text-secondary: #B8ADA3;
-    --accent: #C08B8B;      /* Muted Red/Pink - Used for Primary Actions/Truth */
-    --highlight: #D6B26E;   /* Gold - Used for Funny/Highlights */
+    --accent: #C08B8B;      /* Muted Red/Pink */
+    --highlight: #D6B26E;   /* Gold */
     
-    /* Functional Derivations */
-    --shadow: rgba(0, 0, 0, 0.4);
     --radius: 12px;
-}
-
-/* --- Global Reset & Body --- */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 body {
     background-color: var(--bg-dark);
     color: var(--text-primary);
-    font-family: 'Georgia', 'Times New Roman', serif; /* Serif fits the color vibe better */
+    font-family: 'Inter', sans-serif; /* Optional: Clean font */
+    margin: 0;
+    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 20px;
 }
 
 /* --- Screen Container --- */
 .screen {
-    display: none; /* Hidden by default */
+    display: none;
     width: 100%;
     max-width: 500px;
     text-align: center;
@@ -40,35 +32,30 @@ body {
 }
 
 .screen.active {
-    display: block !important;
+    display: block;
 }
 
 /* --- Typography --- */
-h1, h2, h3 {
-    margin-bottom: 15px;
-    letter-spacing: 1px;
-}
-
-h1 { color: var(--highlight); }
-h2 { color: var(--text-primary); }
-h3 { color: var(--text-secondary); font-size: 1rem; text-transform: uppercase; }
-p { color: var(--text-secondary); margin-bottom: 20px; line-height: 1.5; }
+h1 { color: var(--highlight); margin-bottom: 20px; }
+h2 { color: var(--text-primary); margin-bottom: 15px; }
+h3 { color: var(--text-secondary); font-size: 0.9rem; text-transform: uppercase; margin-bottom: 10px; }
+p { color: var(--text-secondary); line-height: 1.5; }
 
 /* --- Inputs --- */
-input[type="text"] {
+input[type="text"], input[type="number"] {
     width: 100%;
     padding: 15px;
     margin-bottom: 15px;
     border: 2px solid transparent;
     border-radius: var(--radius);
     background-color: var(--card-light);
-    color: var(--bg-dark); /* Dark text on light input */
+    color: var(--bg-dark);
     font-size: 1.1rem;
     font-family: inherit;
-    transition: 0.3s;
+    box-sizing: border-box; /* Fixes padding issues */
 }
 
-input[type="text"]:focus {
+input:focus {
     outline: none;
     border-color: var(--highlight);
     box-shadow: 0 0 10px rgba(214, 178, 110, 0.3);
@@ -85,99 +72,75 @@ button {
     font-size: 1rem;
     font-weight: bold;
     cursor: pointer;
-    transition: transform 0.1s, filter 0.2s;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    transition: 0.2s;
+    margin-top: 10px;
 }
 
-button:hover {
-    filter: brightness(1.1);
+button:hover { filter: brightness(1.1); transform: translateY(-2px); }
+button:active { transform: scale(0.98); }
+
+/* --- PLAYER LIST (Lobby) --- */
+#player-list-container {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05); /* Subtle glass background */
+    border-radius: var(--radius);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-button:active {
-    transform: scale(0.98);
+#player-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
 }
 
-/* --- Voting Cards (The Core Gameplay UI) --- */
-.card-container {
+#player-list li {
+    background-color: transparent;
+    border: 1px solid var(--text-secondary);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+#player-list li.me {
+    border-color: var(--highlight);
+    color: var(--highlight);
+    font-weight: bold;
+    background-color: rgba(214, 178, 110, 0.1);
+}
+
+/* --- SETTINGS (Host Controls) --- */
+#host-controls {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 
-.vote-card {
-    background-color: var(--card-light);
-    color: var(--bg-dark);
-    padding: 18px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: 500;
-    border: 3px solid transparent;
-    transition: all 0.2s ease;
-    box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+.setting-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
 }
 
-.vote-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 6px 6px 0px rgba(0,0,0,0.3);
-}
-
-/* Selection States - Using Palette Colors */
-.selected-truth {
-    background-color: var(--bg-dark);
-    color: var(--accent);
-    border-color: var(--accent);
-    box-shadow: 0 0 15px var(--accent);
-}
-
-.selected-funny {
-    background-color: var(--bg-dark);
-    color: var(--highlight);
-    border-color: var(--highlight);
-    box-shadow: 0 0 15px var(--highlight);
-}
-
-/* --- Results Board --- */
-.result-entry {
-    background-color: rgba(255, 255, 255, 0.05); /* Slight glass effect */
-    border: 1px solid var(--text-secondary);
-    padding: 15px;
-    border-radius: var(--radius);
-    margin-bottom: 10px;
-    text-align: left;
-}
-
-.result-entry strong {
-    color: var(--highlight);
-    font-size: 1.1rem;
-}
-
-.result-entry em {
-    color: var(--text-primary);
-    font-style: normal;
-    display: block;
-    margin: 5px 0 10px 0;
-    padding-left: 10px;
-    border-left: 3px solid var(--accent);
-}
-
-/* --- Waiting Animation --- */
-.wait-icon {
-    font-size: 3rem;
-    margin: 20px auto;
-    display: block;
-    animation: pulse 1.5s infinite;
+.setting-group input {
+    width: 80px;
+    text-align: center;
+    font-weight: bold;
+    padding: 10px;
 }
 
 /* --- Animations --- */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-    0% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.1); opacity: 1; }
-    100% { transform: scale(1); opacity: 0.7; }
 }

@@ -56,44 +56,28 @@ io.on("connection", (socket) => {
     
     // Notify everyone
     const count = roomData[room].players.length;
+    io.to(room).emit("notification", `👋 ${name} has joined the room!`);
     io.to(room).emit("wait-screen", `Waiting for players... (${count} joined)`);
+    updatePlayerList(room,io);
   });
 
   // --- B. REQUEST START (Host Only) ---
-  socket.on("request-start-game", () => {
+  socket.on("request-start-game", (totalRounds) => {
     const user = users[socket.id];
     if (!user) return;
     const room = roomData[user.room];
 
     // Security Check: Only the host can start
     if (room && room.host === socket.id) {
+        // initialize the loop
+        room.maxRounds = parseInt(totalRounds)||5;
+        room.currentRound = 1;
+
+        // call the helper function
+        startNewRound(room,io,user.room);}
+
         
-        io.to(user.room).emit("wait-screen", "Host started the game! Loading...");
-
-        // Small delay for drama
-        setTimeout(() => {
-            const randomIndex = Math.floor(Math.random() * questions.length);
-            let questionData = { ...questions[randomIndex] };
-            let subjectId = null; 
-
-            // Handle {player} tag
-            if (questionData.text && questionData.text.includes("{player}")) {
-                const usersInRoom = Object.values(users).filter(u => u.room === user.room);
-                if (usersInRoom.length > 0) {
-                    const randomUser = usersInRoom[Math.floor(Math.random() * usersInRoom.length)];
-                    questionData.text = questionData.text.replace("{player}", randomUser.name);
-                    subjectId = randomUser.socketId; 
-                }
-            }
-            
-            // Save round data
-            room.currentSubject = subjectId;
-            room.answers = []; 
-            room.votes = [];
-
-            io.to(user.room).emit("new-round", questionData.text); 
-        }, 1000);
-    }
+       
   });
 
   // --- C. SUBMIT ANSWER ---
@@ -160,6 +144,22 @@ io.on("connection", (socket) => {
       
       io.to(user.room).emit("show-results", results);
       
+      
+      if(room.currentRound<room.maxRounds){
+        room.currentRound++;
+        setTimeout(()=>{
+            startNewRound(room,io,user.room);
+        },5000);
+      }
+      else{
+        setTimeout(()=>{
+            io.to(user.room).emit("wait-screen","!GAME OVER!");
+            room.currentRound = 0;
+
+        },3000);
+      }
+
+      // cleanup for next step
       room.answers = [];
       room.votes = [];
     } else {
@@ -174,9 +174,10 @@ io.on("connection", (socket) => {
         console.log(`${user.name} disconnected`);
         if (roomData[user.room]) {
             roomData[user.room].players = roomData[user.room].players.filter(id => id !== socket.id);
-            
+            updatePlayerList(user.room,io);
             // If room is empty, delete it
             if (roomData[user.room].players.length === 0) {
+                io.to(user.room).emit("notification", `🏃 ${user.name} has left the room.`);
                 delete roomData[user.room];
             }
         }
@@ -185,7 +186,59 @@ io.on("connection", (socket) => {
   });
 
 }); // End of io.on('connection')
+// --- HELPER: Send Player List to Room ---
+function updatePlayerList(room, io) {
+    if (!roomData[room]) return;
+    
+    // Get all players in the room
+    const currentPlayers = roomData[room].players;
+    
+    // Map IDs to Names (check if user exists first)
+    const names = currentPlayers
+        .map(id => users[id] ? users[id].name : null)
+        .filter(name => name !== null); // Remove nulls if any
+    
+    // Send list to everyone in that room
+    io.to(room).emit("update-player-list", names);
+}
+// --- HELPER FUNCTION: START A NEW ROUND ---
+function startNewRound(room, io, roomName) {
+    // 1. Pick a random question
+    const randomIndex = Math.floor(Math.random() * questions.length);
+    let questionData = { ...questions[randomIndex] };
+    let subjectId = null;
 
+    // 2. Handle {player} tag (Replace with a real name)
+    if (questionData.text && questionData.text.includes("{player}")) {
+        // Get list of players in this room
+        const playerIds = room.players;
+        
+        // Safety check: Make sure there are players
+        if (playerIds.length > 0) {
+            const randomPlayerId = playerIds[Math.floor(Math.random() * playerIds.length)];
+            
+            // Check if user still exists
+            if (users[randomPlayerId]) {
+                const randomPlayerName = users[randomPlayerId].name;
+                questionData.text = questionData.text.replace("{player}", randomPlayerName);
+                subjectId = randomPlayerId;
+            }
+        }
+    }
+
+    // 3. Reset Round Data (Clear answers and votes for the new round)
+    room.currentSubject = subjectId;
+    room.answers = [];
+    room.votes = [];
+
+    // 4. Notify clients: "Starting Round X of Y..."
+    io.to(roomName).emit("wait-screen", `Starting Round ${room.currentRound} of ${room.maxRounds}...`);
+    
+    // 5. Send the question after a short delay (for drama)
+    setTimeout(() => {
+        io.to(roomName).emit("new-round", questionData.text);
+    }, 2000);
+}
 // Using port 3001 to avoid conflicts
 server.listen(3001, () => {
   console.log('----------------------------------------');
